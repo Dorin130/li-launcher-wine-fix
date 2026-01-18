@@ -26,9 +26,9 @@ make
 
 3. Launch the installer/launcher
 
-### NOTE
+### Testing
 
-Tested and working with wine-10.20. Proton was tested but did not work.
+Tested and working with wine-10.20 and ge-proton10-28.
 
 ### Example Setup
 

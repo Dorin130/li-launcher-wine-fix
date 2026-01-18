@@ -139,7 +139,13 @@ BOOL WINAPI HookedWriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytes
     // Sleep for a short time to allow ConnectNamedPipe to be called first.
     for (int i = 0; i < PIPE_BUFFER_SIZE; i++) {
         if (pendingPipeHandles[i] == hFile) {
-            Sleep(50);
+            for( int j = 10; j > 0; j-- ) {
+                Sleep(50);
+                // Check if the pipe has been connected
+                if (pendingPipeHandles[i] == INVALID_HANDLE_VALUE) {
+                    break;
+                }
+            }
             break;
         }
     }
