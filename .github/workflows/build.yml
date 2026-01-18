@@ -1,0 +1,35 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6.0.1
+    
+    - name: Setup MinGW
+      uses: egor-tensin/setup-mingw@v3
+      with:
+        platform: x86
+    
+    - name: Build
+      run: make
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: version.dll
+        path: version.dll
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v2.5.0
+      with:
+        files: version.dll
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
