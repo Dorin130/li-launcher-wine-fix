@@ -94,59 +94,23 @@ void* HookFunction(const wchar_t* moduleName, const char* functionName, void* re
 
 // Payloads
 typedef HMODULE (WINAPI *LoadLibraryW_t)(LPCWSTR);
-typedef HANDLE (WINAPI *CreateNamedPipeW_t)(LPCWSTR, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, LPSECURITY_ATTRIBUTES);
-typedef BOOL (WINAPI *ConnectNamedPipe_t)(HANDLE, LPOVERLAPPED);
 typedef BOOL (WINAPI *WriteFile_t)(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
 
 LoadLibraryW_t OriginalLoadLibraryW = NULL;
-CreateNamedPipeW_t OriginalCreateNamedPipeW = NULL;
-ConnectNamedPipe_t OriginalConnectNamedPipe = NULL;
 WriteFile_t OriginalWriteFile = NULL;
-
-#define PIPE_BUFFER_SIZE 16
-HANDLE pendingPipeHandles[PIPE_BUFFER_SIZE] = {[0 ... PIPE_BUFFER_SIZE - 1] = INVALID_HANDLE_VALUE};
-
-HANDLE WINAPI HookedCreateNamedPipeW(LPCWSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
-{
-    // disable NOWAIT just in case
-    dwPipeMode &= ~PIPE_NOWAIT;
-    HANDLE hPipe = OriginalCreateNamedPipeW(lpName, dwOpenMode, dwPipeMode, nMaxInstances, nOutBufferSize, nInBufferSize, nDefaultTimeOut, lpSecurityAttributes);
-    for (int i = 0; i < PIPE_BUFFER_SIZE; i++) {
-        if (pendingPipeHandles[i] == INVALID_HANDLE_VALUE) {
-            pendingPipeHandles[i] = hPipe;
-            break;
-        }
-    }
-    return hPipe;
-}
-
-BOOL WINAPI HookedConnectNamedPipe(HANDLE hNamedPipe, LPOVERLAPPED lpOverlapped)
-{
-    BOOL result = OriginalConnectNamedPipe(hNamedPipe, lpOverlapped);
-    for (int i = 0; i < PIPE_BUFFER_SIZE; i++) {
-        if (pendingPipeHandles[i] == hNamedPipe) {
-            pendingPipeHandles[i] = INVALID_HANDLE_VALUE;
-            break;
-        }
-    }
-    return result;
-}
 
 BOOL WINAPI HookedWriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped)
 {
     // The race condition is here: The program writes to the pipe before ConnectNamedPipe is called.
     // So much of the initialization data is lost and the program stalls.
-    // Sleep for a short time to allow ConnectNamedPipe to be called first.
-    for (int i = 0; i < PIPE_BUFFER_SIZE; i++) {
-        if (pendingPipeHandles[i] == hFile) {
-            for( int j = 10; j > 0; j-- ) {
-                Sleep(50);
-                // Check if the pipe has been connected
-                if (pendingPipeHandles[i] == INVALID_HANDLE_VALUE) {
-                    break;
-                }
+    if (GetFileType(hFile) == FILE_TYPE_PIPE) {
+        for (int attempts = 0; attempts < 10; attempts++) {
+            BOOL result = OriginalWriteFile(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
+            if (result || GetLastError() != ERROR_PIPE_LISTENING) {
+                return result;
             }
-            break;
+            // Wait a bit and try again
+            Sleep(50);
         }
     }
     return OriginalWriteFile(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
@@ -156,8 +120,6 @@ HMODULE WINAPI HookedLoadLibraryW(LPCWSTR lpLibFileName)
 {
     HMODULE result = OriginalLoadLibraryW(lpLibFileName);
     if (lpLibFileName && wcsstr(lpLibFileName, L"VersionServiceProxy.dll")) {
-        OriginalCreateNamedPipeW = (CreateNamedPipeW_t)HookFunction(L"VersionServiceProxy.dll", "CreateNamedPipeW", HookedCreateNamedPipeW);
-        OriginalConnectNamedPipe = (ConnectNamedPipe_t)HookFunction(L"VersionServiceProxy.dll", "ConnectNamedPipe", HookedConnectNamedPipe);
         OriginalWriteFile = (WriteFile_t)HookFunction(L"VersionServiceProxy.dll", "WriteFile", HookedWriteFile);
     }
     return result;
