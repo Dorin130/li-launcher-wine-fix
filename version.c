@@ -1,6 +1,6 @@
 #include <windows.h>
 
-// DLL Proxy
+// Proxy for version.dll
 HMODULE hOriginal = NULL;
 void *pGetFileVersionInfoA, *pGetFileVersionInfoByHandle, *pGetFileVersionInfoExA, *pGetFileVersionInfoExW;
 void *pGetFileVersionInfoSizeA, *pGetFileVersionInfoSizeExA, *pGetFileVersionInfoSizeExW, *pGetFileVersionInfoSizeW;
@@ -50,7 +50,7 @@ void InitProxy()
     pVerQueryValueW = GetProcAddress(hOriginal, "VerQueryValueW");
 }
 
-// IAT Hooking Code
+// IAT hooking
 void* HookFunction(const wchar_t* moduleName, const char* functionName, void* replaceWith)
 {
     const char* moduleBase = (const char*)GetModuleHandleW(moduleName);
@@ -92,7 +92,7 @@ void* HookFunction(const wchar_t* moduleName, const char* functionName, void* re
     return NULL;
 }
 
-// Payloads
+// Hooked functions
 typedef HMODULE (WINAPI *LoadLibraryW_t)(LPCWSTR);
 typedef BOOL (WINAPI *WriteFile_t)(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
 
@@ -101,8 +101,8 @@ WriteFile_t OriginalWriteFile = NULL;
 
 BOOL WINAPI HookedWriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped)
 {
-    // The race condition is here: The program writes to the pipe before ConnectNamedPipe is called.
-    // So much of the initialization data is lost and the program stalls.
+    // Fix race condition: VersionServiceProxy.dll writes to pipes before calling ConnectNamedPipe()
+    // Retry writes to pipes that aren't ready yet to prevent data loss under Wine
     if (GetFileType(hFile) == FILE_TYPE_PIPE) {
         for (int attempts = 0; attempts < 10; attempts++) {
             BOOL result = OriginalWriteFile(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
