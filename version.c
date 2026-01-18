@@ -108,6 +108,8 @@ HANDLE pendingPipeHandles[PIPE_BUFFER_SIZE] = {[0 ... PIPE_BUFFER_SIZE - 1] = IN
 
 HANDLE WINAPI HookedCreateNamedPipeW(LPCWSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
 {
+    // disable NOWAIT just in case
+    dwPipeMode &= ~PIPE_NOWAIT;
     HANDLE hPipe = OriginalCreateNamedPipeW(lpName, dwOpenMode, dwPipeMode, nMaxInstances, nOutBufferSize, nInBufferSize, nDefaultTimeOut, lpSecurityAttributes);
     for (int i = 0; i < PIPE_BUFFER_SIZE; i++) {
         if (pendingPipeHandles[i] == INVALID_HANDLE_VALUE) {
