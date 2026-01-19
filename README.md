@@ -2,21 +2,13 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A proxy DLL that fixes a race condition in the Level Infinite launcher/installer, enabling proper game installation and updates under Wine/Proton.
-
-## Overview
-
-This project provides a drop-in replacement for `version.dll` that resolves a named pipe synchronization issue in Level Infinite's game launcher. The bug causes installations and updates to stall indefinitely when running under Wine, but works correctly on native Windows.
+A proxy DLL that fixes a race condition in Level Infinite's `VersionServiceProxy.dll` (usually found in AppData miniloader directories) when running under Wine. The bug causes data to be written to named pipes before `ConnectNamedPipe()` is called, resulting in lost initialization data and a deadlock that prevents installations and updates from completing. This issue does not occur on native Windows.
 
 ## Supported Games
 
 - **NIKKE: Goddess of Victory**
 - **Delta Force**
 - Other Level Infinite games using the miniloader system
-
-## The Problem
-
-The Level Infinite launcher's `VersionServiceProxy.dll` has a race condition where it writes data to named pipes before calling `ConnectNamedPipe()`. This causes initialization data to be lost under Wine, resulting in a deadlock that prevents the launcher from proceeding.
 
 ## Building
 
@@ -50,7 +42,7 @@ Set the DLL override in `winecfg`:
 
 1. Run `winecfg`
 2. Go to the **Libraries** tab
-3. Add a new override for `*version` (type the name and click "Add")
+3. Add a new override for `version` (type the name and click "Add")
 4. Set it to `native, builtin` (n,b)
 
 ### Step 3: Copy the DLL
@@ -77,7 +69,7 @@ Run the installer/launcher normally. Installation and updates should now complet
 - Wine 10.20
 - GE-Proton 10-28
 
-Should work with most modern Wine versions (8.0+).
+Expected to work with most modern Wine versions (8.0+).
 
 ## Example Setup
 
@@ -90,7 +82,7 @@ wine-10.20
 # Create a clean Wine prefix
 $ export WINEPREFIX="/path/to/clean/prefix"
 
-# Configure Wine and add *version override
+# Configure Wine and add version override
 $ winecfg
 
 # Install required dependency
