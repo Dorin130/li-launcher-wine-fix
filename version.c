@@ -119,8 +119,18 @@ BOOL WINAPI HookedWriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytes
 HMODULE WINAPI HookedLoadLibraryW(LPCWSTR lpLibFileName)
 {
     HMODULE result = OriginalLoadLibraryW(lpLibFileName);
-    if (lpLibFileName && wcsstr(lpLibFileName, L"VersionServiceProxy.dll")) {
-        OriginalWriteFile = (WriteFile_t)HookFunction(L"VersionServiceProxy.dll", "WriteFile", HookedWriteFile);
+    if (lpLibFileName) {
+        if (wcsstr(lpLibFileName, L"VersionServiceProxy.dll")) {
+            void* currentAddress = HookFunction(L"VersionServiceProxy.dll", "WriteFile", HookedWriteFile);
+            if (currentAddress && currentAddress != (void*)HookedWriteFile) {
+                OriginalWriteFile = (WriteFile_t)currentAddress;
+            }
+        } else if (wcsstr(lpLibFileName, L"service_core.dll")) {
+            void* currentAddress = HookFunction(L"service_core.dll", "LoadLibraryW", HookedLoadLibraryW);
+            if (currentAddress && currentAddress != (void*)HookedLoadLibraryW) {
+                OriginalLoadLibraryW = (LoadLibraryW_t)currentAddress;
+            }
+        }
     }
     return result;
 }
@@ -128,6 +138,7 @@ HMODULE WINAPI HookedLoadLibraryW(LPCWSTR lpLibFileName)
 void Hook()
 {
     OriginalLoadLibraryW = (LoadLibraryW_t)HookFunction(NULL, "LoadLibraryW", HookedLoadLibraryW);
+    HookFunction(L"base.dll", "LoadLibraryW", HookedLoadLibraryW);
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)

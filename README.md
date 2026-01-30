@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A proxy DLL that fixes a race condition in Level Infinite's `VersionServiceProxy.dll` (usually found in AppData miniloader directories) when running under Wine. The bug causes data to be written to named pipes before `ConnectNamedPipe()` is called, resulting in lost initialization data and a deadlock that prevents installations and updates from completing. This issue does not occur on native Windows.
+A proxy DLL that fixes a race condition in Level Infinite's `VersionServiceProxy.dll` (usually found in AppData miniloader directories and launcher directories) when running under Wine. The bug causes data to be written to named pipes before `ConnectNamedPipe()` is called, resulting in lost initialization data and a deadlock that prevents installations and updates from completing. This issue does not occur on native Windows.
 
 ## Supported Games
 
@@ -57,6 +57,13 @@ cp version.dll "$WINEPREFIX/drive_c/users/$USER/AppData/Local/nikkeminiloader/"
 **Delta Force:**
 ```bash
 cp version.dll "$WINEPREFIX/drive_c/users/$USER/AppData/Local/DeltaForceMiniloader/"
+```
+
+**Launcher updates:**
+
+For launcher updates, also copy to the launcher folder:
+```bash
+cp version.dll "$WINEPREFIX/drive_c/NIKKE/Launcher/"
 ```
 
 ### Step 4: Launch the Installer
