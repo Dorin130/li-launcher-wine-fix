@@ -1,3 +1,12 @@
+This project is archived and no longer recommended.
+
+Use **wine-miniloader** instead:
+https://dawn.wine/NelloKudo/wine-miniloader
+
+`wine-miniloader` is a patched Wine build that includes fixes for miniloader and additional launcher issues beyond what is provided here.
+
+---
+
 # Level Infinite Miniloader Wine Fix
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
